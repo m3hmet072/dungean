@@ -71,6 +71,7 @@ function readStoredBatchForm() {
 }
 
 function formatNumber(value: number) {
+  if (!Number.isFinite(value)) return "0";
   return Number.isInteger(value) ? String(value) : value.toFixed(2);
 }
 
@@ -135,7 +136,12 @@ export function App() {
   }
 
   function updateBatchNumber(field: keyof Pick<BatchForm, "amount" | "startX" | "startY" | "startZ" | "offsetX" | "offsetY" | "offsetZ">, value: string) {
-    setBatchForm((current) => ({ ...current, [field]: value === "" ? "" : Number(value) }));
+    if (value === "") {
+      setBatchForm((current) => ({ ...current, [field]: "" }));
+    } else {
+      const parsed = Number(value);
+      setBatchForm((current) => ({ ...current, [field]: isNaN(parsed) ? 0 : parsed }));
+    }
   }
 
   function updateBatchCheckbox(field: keyof Pick<BatchForm, "incrementX" | "incrementY" | "incrementZ">, value: boolean) {
@@ -160,10 +166,15 @@ export function App() {
     setDoors((current) => current.map((door) => (door.id === updatedDoor.id ? updatedDoor : door)));
   }
 
-  function updateSelectedField(field: keyof Pick<Door, "x" | "y" | "z" | "yaw">, value: string) {
+  function updateSelectedField(field: keyof Pick<Door, "x" | "y" | "z" | "yaw" | "name">, value: string) {
     if (!selectedDoor) return;
-    const nextValue = Number(value || 0);
-    updateDoor({ ...selectedDoor, [field]: field === "yaw" ? nextValue : snap100(nextValue) });
+    if (field === "name") {
+      updateDoor({ ...selectedDoor, name: value });
+    } else {
+      const parsed = Number(value || 0);
+      const nextValue = isNaN(parsed) ? 0 : parsed;
+      updateDoor({ ...selectedDoor, [field]: field === "yaw" ? nextValue : snap100(nextValue) });
+    }
   }
 
   async function copyCommands() {
@@ -324,15 +335,10 @@ export function App() {
             </div>
 
             {selectedDoor ? (
-              <>
-                <div className="transform-grid">
-                  <TransformInput label="X (front/back)" step={100} value={selectedDoor.x} onChange={(value) => updateSelectedField("x", value)} />
-                  <TransformInput label="Y (left/right)" step={100} value={selectedDoor.y} onChange={(value) => updateSelectedField("y", value)} />
-                  <TransformInput label="Z (up/down)" step={100} value={selectedDoor.z} onChange={(value) => updateSelectedField("z", value)} />
-                  <TransformInput label="Yaw (rotation)" step={15} value={selectedDoor.yaw} onChange={(value) => updateSelectedField("yaw", value)} />
-                </div>
-                <p className="axis-help">X = front/back · Y = left/right · Z = up/down · Yaw = 0°-360°</p>
-              </>
+              <SelectedTransformPanel 
+                door={selectedDoor}
+                onUpdate={updateSelectedField}
+              />
             ) : (
               <p className="empty-note">Add or select a door to edit transforms.</p>
             )}
@@ -380,10 +386,29 @@ function TransformInput({
   step?: number;
   onChange: (value: string) => void;
 }) {
+  const [localValue, setLocalValue] = React.useState(formatNumber(value));
+
+  React.useEffect(() => {
+    setLocalValue(formatNumber(value));
+  }, [value]);
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalValue(event.target.value);
+    onChange(event.target.value);
+  };
+
   return (
     <label className="transform-field">
       <span>{label}</span>
-      <input type="number" step={step} value={formatNumber(value)} onChange={(event) => onChange(event.target.value)} />
+      <input 
+        type="text" 
+        inputMode="numeric" 
+        value={localValue} 
+        onChange={handleChange}
+        onKeyDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+      />
     </label>
   );
 }
@@ -399,10 +424,71 @@ function BatchInput({
   step?: number;
   onChange: (value: string) => void;
 }) {
+  const [localValue, setLocalValue] = React.useState(String(value));
+
+  React.useEffect(() => {
+    setLocalValue(String(value));
+  }, [value]);
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalValue(event.target.value);
+    onChange(event.target.value);
+  };
+
   return (
     <label className="transform-field">
       <span>{label}</span>
-      <input type="number" step={label === "Amount" ? 1 : step} value={value} onChange={(event) => onChange(event.target.value)} />
+      <input 
+        type="text" 
+        inputMode="numeric" 
+        value={localValue} 
+        onChange={handleChange}
+        onKeyDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+      />
     </label>
+  );
+}
+
+function SelectedTransformPanel({
+  door,
+  onUpdate,
+}: {
+  door: Door;
+  onUpdate: (field: keyof Pick<Door, "x" | "y" | "z" | "yaw" | "name">, value: string) => void;
+}) {
+  const [localName, setLocalName] = React.useState(door.name);
+
+  React.useEffect(() => {
+    setLocalName(door.name);
+  }, [door.id, door.name]);
+
+  const handleNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalName(event.target.value);
+    onUpdate("name", event.target.value);
+  };
+
+  return (
+    <>
+      <div className="transform-grid">
+        <label className="transform-field">
+          <span>Name</span>
+          <input 
+            type="text" 
+            value={localName} 
+            onChange={handleNameChange}
+            onKeyDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+          />
+        </label>
+        <TransformInput label="X (front/back)" step={100} value={door.x} onChange={(value) => onUpdate("x", value)} />
+        <TransformInput label="Y (left/right)" step={100} value={door.y} onChange={(value) => onUpdate("y", value)} />
+        <TransformInput label="Z (up/down)" step={100} value={door.z} onChange={(value) => onUpdate("z", value)} />
+        <TransformInput label="Yaw (rotation)" step={15} value={door.yaw} onChange={(value) => onUpdate("yaw", value)} />
+      </div>
+      <p className="axis-help">X = front/back · Y = left/right · Z = up/down · Yaw = 0°-360°</p>
+    </>
   );
 }

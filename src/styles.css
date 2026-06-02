@@ -177,6 +177,11 @@ svg {
     linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0)),
     var(--panel);
   box-shadow: var(--shadow);
+  position: relative;
+}
+
+.viewport-panel {
+  z-index: 0;
 }
 
 .viewport-panel {
@@ -246,12 +251,14 @@ svg {
   position: relative;
   min-height: 100%;
   background: #0d1117;
+  overflow: hidden;
 }
 
 .ark-canvas {
   width: 100%;
   height: 100%;
   min-height: 696px;
+  overflow: hidden;
 }
 
 .ark-canvas canvas {
@@ -278,10 +285,14 @@ svg {
   display: grid;
   align-content: start;
   gap: 14px;
+  position: relative;
+  z-index: 10;
 }
 
 .panel-card {
   padding: 16px;
+  position: relative;
+  z-index: 1;
 }
 
 .panel-heading {
@@ -454,9 +465,15 @@ svg {
 
 .transform-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 12px;
+  position: relative;
+  z-index: 100;
+}
+
+.transform-grid > .transform-field:first-child {
+  grid-column: 1 / -1;
 }
 
 .batch-grid {
@@ -535,6 +552,8 @@ svg {
   color: var(--muted);
   font-size: 0.75rem;
   font-weight: 750;
+  position: relative;
+  z-index: 2;
 }
 
 .transform-field input {
@@ -546,6 +565,14 @@ svg {
   color: var(--text);
   font-family: var(--mono);
   padding: 0 10px;
+  pointer-events: auto;
+  cursor: text;
+  position: relative;
+  z-index: 3;
+}
+
+.transform-field input:hover {
+  border-color: rgba(94, 234, 212, 0.45);
 }
 
 .transform-field input:focus {
