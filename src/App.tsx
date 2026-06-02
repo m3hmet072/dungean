@@ -298,12 +298,12 @@ export function App() {
 
             <div className="batch-grid">
               <BatchInput label="Amount" value={batchForm.amount} onChange={(value) => updateBatchNumber("amount", value)} />
-              <BatchInput label="Start X" value={batchForm.startX} onChange={(value) => updateBatchNumber("startX", value)} />
-              <BatchInput label="Start Y" value={batchForm.startY} onChange={(value) => updateBatchNumber("startY", value)} />
-              <BatchInput label="Start Z" value={batchForm.startZ} onChange={(value) => updateBatchNumber("startZ", value)} />
-              <BatchInput label="Offset X" value={batchForm.offsetX} onChange={(value) => updateBatchNumber("offsetX", value)} />
-              <BatchInput label="Offset Y" value={batchForm.offsetY} onChange={(value) => updateBatchNumber("offsetY", value)} />
-              <BatchInput label="Offset Z" value={batchForm.offsetZ} onChange={(value) => updateBatchNumber("offsetZ", value)} />
+              <BatchInput label="Start X (front/back)" value={batchForm.startX} onChange={(value) => updateBatchNumber("startX", value)} />
+              <BatchInput label="Offset X (front/back)" value={batchForm.offsetX} onChange={(value) => updateBatchNumber("offsetX", value)} />
+              <BatchInput label="Start Y (left/right)" value={batchForm.startY} onChange={(value) => updateBatchNumber("startY", value)} />
+              <BatchInput label="Offset Y (left/right)" value={batchForm.offsetY} onChange={(value) => updateBatchNumber("offsetY", value)} />
+              <BatchInput label="Start Z (up/down)" value={batchForm.startZ} onChange={(value) => updateBatchNumber("startZ", value)} />
+              <BatchInput label="Offset Z (up/down)" value={batchForm.offsetZ} onChange={(value) => updateBatchNumber("offsetZ", value)} />
             </div>
 
             <div className="batch-checks">
@@ -324,11 +324,14 @@ export function App() {
             </div>
 
             {selectedDoor ? (
-              <div className="transform-grid">
-                <TransformInput label="X" step={100} value={selectedDoor.x} onChange={(value) => updateSelectedField("x", value)} />
-                <TransformInput label="Y" step={100} value={selectedDoor.y} onChange={(value) => updateSelectedField("y", value)} />
-                <TransformInput label="Z" step={100} value={selectedDoor.z} onChange={(value) => updateSelectedField("z", value)} />
-              </div>
+              <>
+                <div className="transform-grid">
+                  <TransformInput label="X (front/back)" step={100} value={selectedDoor.x} onChange={(value) => updateSelectedField("x", value)} />
+                  <TransformInput label="Y (left/right)" step={100} value={selectedDoor.y} onChange={(value) => updateSelectedField("y", value)} />
+                  <TransformInput label="Z (up/down)" step={100} value={selectedDoor.z} onChange={(value) => updateSelectedField("z", value)} />
+                </div>
+                <p className="axis-help">X = front/back · Y = left/right · Z = up/down</p>
+              </>
             ) : (
               <p className="empty-note">Add or select a door to edit transforms.</p>
             )}

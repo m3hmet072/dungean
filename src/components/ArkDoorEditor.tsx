@@ -27,9 +27,33 @@ function toCommand(value: number) {
   return Math.round((value * commandScale) / commandSnap) * commandSnap;
 }
 
+function worldCoordFromDoor(door: Door) {
+  return {
+    x: toWorld(door.y),
+    y: toWorld(door.z),
+    z: toWorld(-door.x),
+  };
+}
+
+function doorCoordFromWorld(position: THREE.Vector3) {
+  return {
+    x: toCommand(-position.z),
+    y: toCommand(position.x),
+    z: toCommand(position.y),
+  };
+}
+
 function normalizeYaw(radians: number) {
   const degrees = THREE.MathUtils.radToDeg(radians);
   return Math.round(((degrees % 360) + 360) % 360);
+}
+
+function worldRotationFromDoorYaw(yaw: number) {
+  return THREE.MathUtils.degToRad(yaw + 90);
+}
+
+function doorYawFromWorldRotation(radians: number) {
+  return normalizeYaw(radians - THREE.MathUtils.degToRad(90));
 }
 
 function createDoorMesh() {
@@ -161,7 +185,7 @@ function createPlayerMarker() {
   direction.position.set(0, 0.08, -0.58);
   group.add(direction);
 
-  group.position.set(0, 0, 1.6);
+  group.position.set(0, 0, 0);
   return group;
 }
 
@@ -231,12 +255,14 @@ export function ArkDoorEditor({
       if (!object) return;
       const door = doorsRef.current.find((candidate) => candidate.id === selectedDoorIdRef.current);
       if (!door) return;
+      const worldPosition = object.position.clone();
+      const doorPosition = doorCoordFromWorld(worldPosition);
       onChangeDoorRef.current({
         ...door,
-        x: toCommand(object.position.x),
-        y: toCommand(object.position.y),
-        z: toCommand(object.position.z),
-        yaw: normalizeYaw(object.rotation.y),
+        x: doorPosition.x,
+        y: doorPosition.y,
+        z: doorPosition.z,
+        yaw: doorYawFromWorldRotation(object.rotation.y),
       });
     });
     scene.add(transform.getHelper());
@@ -344,8 +370,9 @@ export function ArkDoorEditor({
         scene.add(mesh);
       }
 
-      mesh.position.set(toWorld(door.x), toWorld(door.y), toWorld(door.z));
-      mesh.rotation.y = THREE.MathUtils.degToRad(door.yaw);
+      const worldPosition = worldCoordFromDoor(door);
+      mesh.position.set(worldPosition.x, worldPosition.y, worldPosition.z);
+      mesh.rotation.y = worldRotationFromDoorYaw(door.yaw);
 
       const selected = door.id === selectedDoorId;
       mesh.traverse((child) => {
