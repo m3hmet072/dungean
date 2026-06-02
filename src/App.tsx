@@ -329,8 +329,9 @@ export function App() {
                   <TransformInput label="X (front/back)" step={100} value={selectedDoor.x} onChange={(value) => updateSelectedField("x", value)} />
                   <TransformInput label="Y (left/right)" step={100} value={selectedDoor.y} onChange={(value) => updateSelectedField("y", value)} />
                   <TransformInput label="Z (up/down)" step={100} value={selectedDoor.z} onChange={(value) => updateSelectedField("z", value)} />
+                  <TransformInput label="Yaw (rotation)" step={15} value={selectedDoor.yaw} onChange={(value) => updateSelectedField("yaw", value)} />
                 </div>
-                <p className="axis-help">X = front/back · Y = left/right · Z = up/down</p>
+                <p className="axis-help">X = front/back · Y = left/right · Z = up/down · Yaw = 0°-360°</p>
               </>
             ) : (
               <p className="empty-note">Add or select a door to edit transforms.</p>
