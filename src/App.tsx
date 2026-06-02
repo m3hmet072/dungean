@@ -153,9 +153,9 @@ export function App() {
     const newDoors = Array.from({ length: amount }, (_, index): Door => ({
       id: crypto.randomUUID(),
       name: `Door ${index + 1}`,
-      x: snap100(valueOrZero(batchForm.startX) + (batchForm.incrementX ? valueOrZero(batchForm.offsetX) * index : 0)),
-      y: snap100(valueOrZero(batchForm.startY) + (batchForm.incrementY ? valueOrZero(batchForm.offsetY) * index : 0)),
-      z: snap100(valueOrZero(batchForm.startZ) + (batchForm.incrementZ ? valueOrZero(batchForm.offsetZ) * index : 0)),
+      x: valueOrZero(batchForm.startX) + (batchForm.incrementX ? valueOrZero(batchForm.offsetX) * index : 0),
+      y: valueOrZero(batchForm.startY) + (batchForm.incrementY ? valueOrZero(batchForm.offsetY) * index : 0),
+      z: valueOrZero(batchForm.startZ) + (batchForm.incrementZ ? valueOrZero(batchForm.offsetZ) * index : 0),
       yaw: selectedDoor?.yaw ?? 0,
     }));
     setDoors(newDoors);
@@ -173,7 +173,7 @@ export function App() {
     } else {
       const parsed = Number(value || 0);
       const nextValue = isNaN(parsed) ? 0 : parsed;
-      updateDoor({ ...selectedDoor, [field]: field === "yaw" ? nextValue : snap100(nextValue) });
+      updateDoor({ ...selectedDoor, [field]: nextValue });
     }
   }
 
