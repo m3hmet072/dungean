@@ -150,6 +150,8 @@ const presets: Preset[] = [
   },
 ];
 
+const collectionNames = ["Custom Cave Alpha", "BedWars Arena", "Raid Base 01", "Teleporter Roof"];
+
 const initialObjects: PlacedObject[] = [
   makeObject("Dungeon Door", -1800, -420, 220, "Custom Cave Alpha"),
   makeObject("Arena Teleporter", 740, 960, 120, "BedWars Arena"),
@@ -298,8 +300,8 @@ const useAdminStore = create<AdminStore>((set, get) => ({
   objects: initialObjects,
   selectedObjectId: initialObjects[0].id,
   selectedPreset: "Dungeon Door",
-  savedCommands: initialCommands,
-  activeCollectionId: "Custom Cave Alpha",
+  savedCommands: loadSavedCommands(),
+  activeCollectionId: loadActiveCollectionId(),
   flyMode: false,
   walkMode: false,
   snapSize: 500,
@@ -345,21 +347,44 @@ const useAdminStore = create<AdminStore>((set, get) => ({
     const object = get().objects.find((candidate) => candidate.id === get().selectedObjectId);
     if (!object) return;
     const command = commandFromObject(object);
-    set((state) => ({ savedCommands: [command, ...state.savedCommands] }));
+    set((state) => {
+      const savedCommands = [command, ...state.savedCommands];
+      persistSavedCommands(savedCommands);
+      return { savedCommands };
+    });
     get().addToast("Saved command to collection");
   },
-  addSavedCommand: (command) => set((state) => ({ savedCommands: [command, ...state.savedCommands] })),
+  addSavedCommand: (command) => set((state) => {
+    const savedCommands = [command, ...state.savedCommands];
+    persistSavedCommands(savedCommands);
+    return { savedCommands };
+  }),
   duplicateCommand: (id) => {
     const source = get().savedCommands.find((command) => command.id === id);
     if (!source) return;
-    set((state) => ({ savedCommands: [{ ...source, id: cryptoId(), name: `${source.name} Copy`, updated: "Today" }, ...state.savedCommands] }));
+    set((state) => {
+      const savedCommands = [{ ...source, id: cryptoId(), name: `${source.name} Copy`, updated: "Today" }, ...state.savedCommands];
+      persistSavedCommands(savedCommands);
+      return { savedCommands };
+    });
   },
-  deleteCommand: (id) => set((state) => ({ savedCommands: state.savedCommands.filter((command) => command.id !== id) })),
+  deleteCommand: (id) => set((state) => {
+      const savedCommands = state.savedCommands.filter((command) => command.id !== id);
+      persistSavedCommands(savedCommands);
+      return { savedCommands };
+    }),
   deleteCollection: (id) => {
-    set((state) => ({ savedCommands: state.savedCommands.filter((command) => command.collection !== id) }));
+    set((state) => {
+      const savedCommands = state.savedCommands.filter((command) => command.collection !== id);
+      persistSavedCommands(savedCommands);
+      return { savedCommands };
+    });
     get().addToast(`Deleted collection ${id}`);
   },
-  setActiveCollectionId: (activeCollectionId) => set({ activeCollectionId }),
+  setActiveCollectionId: (activeCollectionId) => {
+    persistActiveCollectionId(activeCollectionId);
+    set({ activeCollectionId });
+  },
 }));
 
 const navItems: Array<[PageKey, string, React.ElementType]> = [
@@ -374,6 +399,19 @@ const navItems: Array<[PageKey, string, React.ElementType]> = [
 
 export function AdminDashboard() {
   const [authenticated, setAuthenticated] = React.useState(false);
+
+  React.useEffect(() => {
+    const saved = window.localStorage.getItem("ark-authenticated") === "true";
+    setAuthenticated(saved);
+  }, []);
+
+  React.useEffect(() => {
+    if (authenticated) {
+      window.localStorage.setItem("ark-authenticated", "true");
+    } else {
+      window.localStorage.removeItem("ark-authenticated");
+    }
+  }, [authenticated]);
 
   if (!authenticated) return <LoginScreen onSuccess={() => setAuthenticated(true)} />;
   return <DashboardShell onLogout={() => setAuthenticated(false)} />;
@@ -1424,7 +1462,7 @@ function CommandBuilderPage() {
     z: 100,
     spacing: 500,
     type: "Line" as GenerateType,
-    collection: "Custom Cave Alpha",
+    collection: collectionNames[0],
   });
   const [output, setOutput] = React.useState("");
 
@@ -1484,6 +1522,11 @@ function CommandBuilderPage() {
             </Select>
           </Field>
           <Field label="Blueprint path"><Textarea value={form.blueprint} onChange={(event) => update("blueprint", event.target.value)} /></Field>
+          <Field label="Target collection">
+            <Select value={form.collection} onChange={(event) => update("collection", event.target.value)}>
+              {collectionNames.map((name) => <option key={name}>{name}</option>)}
+            </Select>
+          </Field>
           <div className="coord-grid">
             <Field label="Start X"><Input value={form.startX} onChange={(event) => update("startX", event.target.value)} /></Field>
             <Field label="End X"><Input value={form.endX} onChange={(event) => update("endX", event.target.value)} /></Field>
@@ -1603,6 +1646,7 @@ function CollectionsPage() {
   const activeCollectionId = useAdminStore((state) => state.activeCollectionId);
   const setActiveCollectionId = useAdminStore((state) => state.setActiveCollectionId);
   const deleteCollection = useAdminStore((state) => state.deleteCollection);
+  const deleteCommand = useAdminStore((state) => state.deleteCommand);
   const collections = getCollections(commands);
   const active = collections.find((collection) => collection.id === activeCollectionId) ?? collections[0];
 
@@ -1636,13 +1680,25 @@ function CollectionsPage() {
             <Button variant="destructive" onClick={() => deleteCollection(active?.id ?? "")} type="button">Delete Collection</Button>
           </div>
           <div className="step-list">
-            {active?.commands.map((command, index) => (
-              <div className="step-command" key={command.id}>
-                <span>Command {index + 1}</span>
-                <code>{command.command}</code>
-                <CopyButton text={command.command} label={`Copy command ${index + 1}`} />
+            {active?.commands.length ? (
+              active.commands.map((command, index) => (
+                <div className="step-command" key={command.id}>
+                  <span>Command {index + 1}</span>
+                  <code>{command.command}</code>
+                  <div className="command-actions">
+                    <CopyButton text={command.command} label={`Copy command ${index + 1}`} />
+                    <Button variant="outline" size="sm" onClick={() => deleteCommand(command.id)} type="button">
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="empty-collection-message">
+                <p>No saved commands in this collection yet.</p>
+                <p>Use the builder or command library to add one.</p>
               </div>
-            ))}
+            )}
           </div>
         </CardContent>
       </Card>
@@ -1650,26 +1706,41 @@ function CollectionsPage() {
   );
 }
 
+function persistSavedCommands(savedCommands: SavedCommand[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem("ark-saved-commands", JSON.stringify(savedCommands));
+}
+
+function loadSavedCommands(): SavedCommand[] {
+  if (typeof window === "undefined") return initialCommands;
+  try {
+    const raw = window.localStorage.getItem("ark-saved-commands");
+    if (!raw) return initialCommands;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : initialCommands;
+  } catch {
+    return initialCommands;
+  }
+}
+
+function persistActiveCollectionId(activeCollectionId: string) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem("ark-active-collection", activeCollectionId);
+}
+
+function loadActiveCollectionId() {
+  if (typeof window === "undefined") return collectionNames[0];
+  const saved = window.localStorage.getItem("ark-active-collection");
+  return typeof saved === "string" && collectionNames.includes(saved) ? saved : collectionNames[0];
+}
+
 function getCollections(commands: SavedCommand[]): BuildCollection[] {
-  const names = ["Custom Cave Alpha", "BedWars Arena", "Raid Base 01", "Teleporter Roof"];
-  return names.map((name) => ({
+  return collectionNames.map((name) => ({
     id: name,
     name,
     updated: "Today",
     commands: commands.filter((command) => command.collection === name),
-  })).map((collection) => collection.commands.length ? collection : {
-    ...collection,
-    commands: [{
-      id: cryptoId(),
-      name: `${collection.name} placeholder`,
-      category: "Workflow",
-      blueprint: presets[0].blueprint,
-      objectCount: 1,
-      collection: collection.name,
-      updated: "Mock",
-      command: spawnCommand({ blueprint: presets[0].blueprint, x: 0, y: 0, z: 100, rotation: 0 }),
-    }],
-  });
+  }));
 }
 
 function StructureDatabasePage() {
@@ -1809,6 +1880,7 @@ function DoorCommandCreatorPage() {
   const [doors, setDoors] = React.useState<DoorCommandDoor[]>(() => makeDoorBatch(initialDoorBatchForm));
   const [selectedDoorId, setSelectedDoorId] = React.useState(() => doors[0]?.id ?? "");
   const [doorPreset, setDoorPreset] = React.useState(presets[0].name);
+  const [doorCollection, setDoorCollection] = React.useState(collectionNames[0]);
 
   const selectedDoor = doors.find((door) => door.id === selectedDoorId) ?? doors[0];
   const selectedDoorPreset = presets.find((preset) => preset.name === doorPreset) ?? presets[0];
@@ -1863,7 +1935,7 @@ function DoorCommandCreatorPage() {
       category: selectedDoorPreset.category,
       blueprint: selectedDoorPreset.blueprint,
       objectCount: doors.length,
-      collection: "Custom Cave Alpha",
+      collection: doorCollection,
       updated: "Today",
       command: commands,
     });
@@ -1891,6 +1963,11 @@ function DoorCommandCreatorPage() {
             <Field label="Preset">
               <Select value={doorPreset} onChange={(event) => setDoorPreset(event.target.value)}>
                 {presets.map((preset) => <option key={preset.name}>{preset.name}</option>)}
+              </Select>
+            </Field>
+            <Field label="Target collection">
+              <Select value={doorCollection} onChange={(event) => setDoorCollection(event.target.value)}>
+                {collectionNames.map((name) => <option key={name}>{name}</option>)}
               </Select>
             </Field>
             <div className="door-reference compact">
