@@ -179,7 +179,10 @@ function Header() {
           <MessageCircle aria-hidden="true" />
           Discord
         </Button>
-        <Button size="sm" onClick={() => { window.location.href = "/dashboard"; }}>
+        <Button size="sm" onClick={() => {
+          const baseUrl = (import.meta as any).env?.BASE_URL ?? "/";
+          window.location.href = `${baseUrl}dashboard`;
+        }}>
           Login
         </Button>
       </div>
