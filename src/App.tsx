@@ -33,6 +33,7 @@ import { Select } from "./components/ui/select";
 import { Separator } from "./components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 import { Textarea } from "./components/ui/textarea";
+import { AdminDashboard } from "./components/admin/AdminDashboard";
 
 type Cave = {
   id: string;
@@ -143,7 +144,21 @@ function selectedCave() {
 }
 
 export function App() {
+  const [route, setRoute] = React.useState(() => {
+    if (typeof window === "undefined") return "home";
+    return window.location.hash.replace("#", "") || "home";
+  });
   const currentCave = useMapStore((state) => caves.find((cave) => cave.id === state.selectedCaveId) ?? caves[0]);
+
+  React.useEffect(() => {
+    const handleHashChange = () => setRoute(window.location.hash.replace("#", "") || "home");
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
+  if (route === "dashboard") {
+    return <AdminDashboard />;
+  }
 
   return (
     <main className="site-shell">
@@ -180,8 +195,7 @@ function Header() {
           Discord
         </Button>
         <Button size="sm" onClick={() => {
-          const baseUrl = (import.meta as any).env?.BASE_URL ?? "/";
-          window.location.href = `${baseUrl}dashboard`;
+          window.location.hash = "dashboard";
         }}>
           Login
         </Button>
